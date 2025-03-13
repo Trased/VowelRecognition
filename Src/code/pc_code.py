@@ -3,6 +3,7 @@ import struct
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import glob
 
 # Replace with your actual COM port (Check Device Manager)
 COM_PORT = "COM11"  
@@ -46,20 +47,36 @@ def plot_samples(samples):
     plt.grid(True)
     plt.show()
 
+def find_next_filename(vowel):
+    index = 0
+    while os.path.exists(f"{vowel}_{index}.txt"):
+        index += 1
+    return f"{vowel}_{index}.txt"
+
 def save_samples(samples):
-    filename = input("Enter filename to save data: ")
+    vowel = input("Enter vowel to save (a, e, i, o, u, ha, ui): ").strip().lower()
+    if vowel not in ["a", "e", "i", "o", "u", "ha", "ui"]:
+        print("Invalid vowel. Try again.")
+        return
+    
+    filename = find_next_filename(vowel)
     with open(filename, "w") as file:
         for value in samples:
             file.write(f"{value}\n")
 
-
 def load_vowel_data(vowel):
-    filename = f"{vowel}.txt"
-    if not os.path.exists(filename):
-        print(f"⚠️ File '{filename}' not found.")
-        return None
-    with open(filename, "r") as file:
-        return [int(line.strip()) for line in file.readlines()]
+
+    filenames = glob.glob(f"{vowel}_*.txt")
+    if not filenames:
+        print(f"No recorded samples found for vowel '{vowel}'.")
+        return []
+
+    all_samples = []
+    for file in filenames:
+        with open(file, "r") as f:
+            all_samples.append([int(line.strip()) for line in f.readlines()])
+    
+    return all_samples
 
 def find_peaks(signal, threshold=1000):
     peaks = []
@@ -68,22 +85,29 @@ def find_peaks(signal, threshold=1000):
             peaks.append((i, signal[i]))
     return peaks
 
-def compare_signals(test_signal, recorded_signal):
-    if recorded_signal is None:
+def compare_signals(test_signal, recorded_signals):
+    if not recorded_signals:
         return float('inf')
 
-    test_peaks = [p[1] for p in find_peaks(test_signal)]
-    recorded_peaks = [p[1] for p in find_peaks(recorded_signal)]
+    best_score = float('inf')
 
-    if not test_peaks or not recorded_peaks:
-        return float('inf')
+    for recorded_signal in recorded_signals:
+        test_peaks = [p[1] for p in find_peaks(test_signal)]
+        recorded_peaks = [p[1] for p in find_peaks(recorded_signal)]
 
-    min_length = min(len(test_peaks), len(recorded_peaks))
-    test_peaks = test_peaks[:min_length]
-    recorded_peaks = recorded_peaks[:min_length]
+        if not test_peaks or not recorded_peaks:
+            continue 
 
-    similarity = np.mean((np.array(test_peaks) - np.array(recorded_peaks)) ** 2)
-    return similarity
+        min_length = min(len(test_peaks), len(recorded_peaks))
+        test_peaks = test_peaks[:min_length]
+        recorded_peaks = recorded_peaks[:min_length]
+
+        score = np.mean((np.array(test_peaks) - np.array(recorded_peaks)) ** 2)
+
+        if score < best_score:
+            best_score = score
+
+    return best_score
 
 def test_vowel(samples):
     vowels = ["a", "e", "i", "o", "u", "ha", "ui"]
