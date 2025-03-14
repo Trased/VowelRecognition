@@ -33,18 +33,32 @@ def receive_samples():
     except serial.SerialException as e:
         print(f"Serial error: {e}")
 
-def plot_samples(samples):
-    if samples is None:
-        print("No data to plot.")
-        return
-    
-    plt.figure(figsize=(10, 5))
-    plt.plot(samples, label="ADC Readings", color="b")
+def plot_signals(original, matched, vowel):
+    original_fft = np.fft.fft(original)
+    matched_fft = np.fft.fft(matched)
+    freqs = np.fft.fftfreq(len(original))
+
+    plt.figure(figsize=(12, 6))
+
+    plt.subplot(2, 1, 1)
+    plt.plot(original, label="Acquired Signal", color='b')
+    plt.plot(matched, label=f"Matched Vowel ({vowel})", color='r', linestyle='dashed')
     plt.xlabel("Sample Index")
-    plt.ylabel("ADC Value (0-65535)")
-    plt.title("ADC Data Acquisition")
+    plt.ylabel("ADC Value")
+    plt.title(f"Time Domain Comparison - Acquired vs. {vowel.upper()}")
     plt.legend()
-    plt.grid(True)
+    plt.grid()
+
+    plt.subplot(2, 1, 2)
+    plt.plot(freqs[:len(freqs)//2], np.abs(original_fft[:len(freqs)//2]), label="Acquired Spectrum", color='b')
+    plt.plot(freqs[:len(freqs)//2], np.abs(matched_fft[:len(freqs)//2]), label=f"Matched Spectrum ({vowel})", color='r', linestyle='dashed')
+    plt.xlabel("Frequency (Normalized)")
+    plt.ylabel("Magnitude")
+    plt.title(f"Frequency Spectrum Comparison - Acquired vs. {vowel.upper()}")
+    plt.legend()
+    plt.grid()
+
+    plt.tight_layout()
     plt.show()
 
 def find_next_filename(vowel):
@@ -90,10 +104,11 @@ def compare_signals(test_signal, recorded_signals):
         return float('inf')
 
     best_score = float('inf')
-
+    best_match = None
+    
     for recorded_signal in recorded_signals:
-        test_peaks = [p[1] for p in find_peaks(test_signal)]
-        recorded_peaks = [p[1] for p in find_peaks(recorded_signal)]
+        test_peaks = [p[1] for p in find_peaks(test_signal, 5000)]
+        recorded_peaks = [p[1] for p in find_peaks(recorded_signal,5000)]
 
         if not test_peaks or not recorded_peaks:
             continue 
@@ -106,30 +121,69 @@ def compare_signals(test_signal, recorded_signals):
 
         if score < best_score:
             best_score = score
+            best_match = recorded_signal
 
-    return best_score
+    return best_score, best_match
 
-def test_vowel(samples):
-    vowels = ["a", "e", "i", "o", "u", "ha", "ui"]
-    best_match = None
+def compute_fft(signal):
+    fft_values = np.fft.fft(signal)
+    freqs = np.fft.fftfreq(len(signal))
+    
+    magnitude = np.abs(fft_values)
+    sorted_indices = np.argsort(magnitude)[::-1]
+
+    return freqs[sorted_indices[1]], freqs[sorted_indices[2]]
+
+def compare_signals_fft(test_signal, recorded_signals):
+    if not recorded_signals:
+        return float('inf')
+
     best_score = float('inf')
+    best_match = None
 
-    for vowel in vowels:
-        recorded_signal = load_vowel_data(vowel)
-        if recorded_signal is None:
-            continue
-
-        score = compare_signals(samples, recorded_signal)
-        print(f"Comparison score with '{vowel}': {score}")
+    test_f2, test_f3 = compute_fft(test_signal)
+    for recorded_signal in recorded_signals:
+        rec_f2, rec_f3 = compute_fft(recorded_signal)
+        score = abs(test_f2 - rec_f2) + abs(test_f3 - rec_f3)
 
         if score < best_score:
             best_score = score
-            best_match = vowel
+            best_match = recorded_signal
 
-    if best_match:
-        print(f"Closest match: {best_match.upper()}")
-    else:
-        print("No matching vowel found.")
+    return best_score, best_match
+
+def test_vowel(samples):
+    vowels = ["a", "e", "i", "o", "u", "ha", "ui"]
+    best_match_time = None
+    best_match_freq = None
+    best_score_time = float('inf')
+    best_score_freq = float('inf')
+
+    for vowel in vowels:
+        recorded_signals = load_vowel_data(vowel)
+        if recorded_signals is None:
+            continue
+        
+        freq_score, freq_best_signal = compare_signals_fft(samples, recorded_signals)
+        print(f"FREQ Comparison score with '{vowel}': {freq_score}")
+
+        time_score, time_best_signal = compare_signals(samples, recorded_signals)
+        print(f"TIME Comparison score with '{vowel}': {time_score}")
+
+        if time_score < best_score_time:
+            best_score_time = time_score
+            best_match_time = vowel
+
+        if freq_score < best_score_freq:
+            best_score_freq = freq_score
+            best_match_freq = vowel
+
+    print(f"Closest match in time: {best_match_time.upper()}")
+    print(f"Closest match in freq: {best_match_freq.upper()}")
+
+    plot_signals(samples, time_best_signal, best_match_time)
+    plot_signals(samples, freq_best_signal, best_match_freq)
+
 
 
 
@@ -143,8 +197,6 @@ if __name__ == "__main__":
                 save_samples(samples)
             elif "1" == usr_inpt:
                 test_vowel(samples)
-            
-            #plot_samples(samples)
 
             inpt = input("Continue? 1 - Yes, 0 - No\n")
             if("0" == inpt):
