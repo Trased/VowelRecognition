@@ -2,7 +2,6 @@
 
 This project implements **real-time vowel recognition** using **ADC signal acquisition, Fast Fourier Transform (FFT) analysis, and peak detection**. It compares **acquired audio signals** with **pre-recorded vowels**, identifies the best match, and plots both the **time-domain waveform** and **frequency spectrum** for comparison.
 
----
 
 ## 📌 **Features**
 ✅ **Real-time ADC Sampling via UART**  
@@ -11,8 +10,6 @@ This project implements **real-time vowel recognition** using **ADC signal acqui
 ✅ **Plots both waveform & spectrum of matched vowel vs. acquired signal**  
 ✅ **Supports multiple recordings per vowel for improved accuracy**  
 ✅ **Two different comparison methods (Time-Domain & Frequency-Domain)**
-
----
 
 ## ⚙️ **Hardware & Software Requirements**
 
@@ -29,8 +26,6 @@ This project implements **real-time vowel recognition** using **ADC signal acqui
   ```sh
   pip install pyserial numpy matplotlib
   ```
-
----
 
 ## 🚀 **Setup & Usage**
 
@@ -56,14 +51,10 @@ python main.py
    - **Finds the closest matching vowel** using both Time & Frequency comparison.
    - **Plots time & frequency spectrum comparison.**
 
----
-
+## 📊 **Example Output**
 **Graph Output:**
 - **Time-Domain:** Acquired waveform (blue) vs. Matched vowel (red, dashed).
 - **Frequency Spectrum:** FFT spectrum of both signals.
-
-
----
 
 ## 🔧 **Customization**
 - **Modify `NUM_SAMPLES`** in `main.py` for higher/lower resolution.
@@ -71,10 +62,10 @@ python main.py
 - **Tune `threshold` in `find_peaks()`** to adjust peak sensitivity.
 - **Use different sensors** (e.g., MEMS microphone) for better signal capture.
 
----
 
 ## 🛠️ **Future Improvements**
 - 📈 **Add Spectrogram Analysis** for better frequency representation.
 - 🎵 **Train Machine Learning Model** to classify vowels.
 - 🔀 **Use Dynamic Time Warping (DTW)** for better pattern matching.
 - 📡 **Implement Wireless UART (ESP-NOW, Bluetooth, etc.).**
+
